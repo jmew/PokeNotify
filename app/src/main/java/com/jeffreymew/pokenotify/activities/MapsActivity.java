@@ -1,37 +1,30 @@
-package com.jeffreymew.pokenotify.fragments;
+package com.jeffreymew.pokenotify.activities;
 
 import android.Manifest;
-import android.app.Fragment;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.Bundle;
-import android.provider.Settings;
-import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentActivity;
+import android.os.Bundle;
 import android.support.v4.app.TaskStackBuilder;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.NotificationCompat;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
-import android.widget.Toast;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.jeffreymew.pokenotify.R;
-import com.jeffreymew.pokenotify.activities.MainActivity;
 import com.jeffreymew.pokenotify.utils.Utils;
 import com.pokegoapi.api.PokemonGo;
-import com.pokegoapi.api.map.Map;
 import com.pokegoapi.api.map.Pokemon.CatchablePokemon;
 import com.pokegoapi.exceptions.LoginFailedException;
 import com.pokegoapi.exceptions.RemoteServerException;
@@ -39,7 +32,6 @@ import com.pokegoapi.exceptions.RemoteServerException;
 import java.util.List;
 
 import POGOProtos.Networking.Envelopes.RequestEnvelopeOuterClass;
-import butterknife.ButterKnife;
 import okhttp3.OkHttpClient;
 import rx.Observable;
 import rx.Subscriber;
@@ -47,38 +39,47 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func0;
 import rx.schedulers.Schedulers;
 
-public class MapFragment extends Fragment {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
-    private final int REFRESH_DURATION_IN_MS = 500;
+    private final int REFRESH_DURATION_IN_MS = 30000; //30 seconds
 
     private PokemonGo mPokemonGo;
 
-    public static MapFragment newInstance(RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo) {
-        Bundle args = new Bundle();
-        args.putSerializable(LoginFragment.Extras.AUTH_INFO, authInfo);
-
-        MapFragment fragment = new MapFragment();
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.map_fragment, container, false);
-        ButterKnife.bind(this, view);
-        return view;
-    }
+    private GoogleMap mMap;
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_maps);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
 
-        RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo = (RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo) getArguments().get(LoginFragment.Extras.AUTH_INFO);
+        RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo = (RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo) getIntent().getSerializableExtra(LoginActivity.Extras.AUTH_INFO);
 
         setupPokemon(authInfo);
 
-        setupLocation();
+        setupLocationListeners();
+    }
+
+
+    /**
+     * Manipulates the map once available.
+     * This callback is triggered when the map is ready to be used.
+     * This is where we can add markers or lines, add listeners or move the camera. In this case,
+     * we just add a marker near Sydney, Australia.
+     * If Google Play services is not installed on the device, the user will be prompted to install
+     * it inside the SupportMapFragment. This method will only be triggered once the user has
+     * installed Google Play services and returned to the app.
+     */
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+
+        // Add a marker in Sydney and move the camera
+        LatLng defaultLocation = new LatLng(0, 0);
+        mMap.addMarker(new MarkerOptions().position(defaultLocation).title("Marker in Sydney"));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(defaultLocation));
     }
 
     @Override
@@ -103,7 +104,7 @@ public class MapFragment extends Fragment {
 
                     @Override
                     public void onError(Throwable e) {
-                        Snackbar.make(getActivity().findViewById(android.R.id.content), "Failed to fetch account profile", Snackbar.LENGTH_LONG);
+                        Snackbar.make(findViewById(android.R.id.content), "Failed to fetch account profile", Snackbar.LENGTH_LONG);
                     }
 
                     @Override
@@ -118,23 +119,23 @@ public class MapFragment extends Fragment {
     }
 
     private void notifyPokemonNearby(List<CatchablePokemon> pokemon) {
-        NotificationCompat.Builder builder = Utils.createNotification(getActivity(), pokemon);
+        NotificationCompat.Builder builder = Utils.createNotification(this, pokemon);
 
-        Intent resultIntent = new Intent(getActivity(), MainActivity.class);
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(getActivity());
-        stackBuilder.addParentStack(MainActivity.class);
+        Intent resultIntent = new Intent(this, LoginActivity.class);
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+        stackBuilder.addParentStack(LoginActivity.class);
         stackBuilder.addNextIntent(resultIntent);
 
         PendingIntent resultPendingIntent =
                 PendingIntent.getActivity(
-                        getActivity(),
+                        this,
                         0,
                         resultIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT
                 );
         builder.setContentIntent(resultPendingIntent);
 
-        NotificationManager mNotificationManager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(0, builder.build());
     }
 
@@ -145,7 +146,7 @@ public class MapFragment extends Fragment {
                 try {
                     return Observable.just(mPokemonGo.getMap().getCatchablePokemon());
                 } catch (LoginFailedException | RemoteServerException e) {
-                    Snackbar.make(getActivity().findViewById(android.R.id.content), "Failed to fetch nearby Pokemon", Snackbar.LENGTH_LONG);
+                    Snackbar.make(findViewById(android.R.id.content), "Failed to fetch nearby Pokemon", Snackbar.LENGTH_LONG);
                 }
                 return Observable.empty();
             }
@@ -160,21 +161,19 @@ public class MapFragment extends Fragment {
 
                     @Override
                     public void onError(Throwable e) {
-                        Snackbar.make(getActivity().findViewById(android.R.id.content), "Failed to fetch nearby Pokemon", Snackbar.LENGTH_LONG);
+                        Snackbar.make(findViewById(android.R.id.content), "Failed to fetch nearby Pokemon", Snackbar.LENGTH_LONG);
                     }
 
                     @Override
                     public void onNext(List<CatchablePokemon> catchablePokemons) {
                         //TODO to list operator?
-                        getActivity().findViewById(R.id.test).setVisibility(View.VISIBLE);
-                        ((TextView) getActivity().findViewById(R.id.test)).setText("GPS Ready");
                         notifyPokemonNearby(catchablePokemons);
                     }
                 });
     }
 
-    private void setupLocation() {
-        LocationManager locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
+    private void setupLocationListeners() {
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         LocationListener locationListener = new LocationListener() {
             @Override
@@ -200,7 +199,7 @@ public class MapFragment extends Fragment {
         };
 
         // Check if location permissions are enabled
-        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
 
@@ -212,7 +211,7 @@ public class MapFragment extends Fragment {
     }
 
 //    private void showEnableLocationDialog() {
-//        final AlertDialog.Builder dialog = new AlertDialog.Builder(getActivity());
+//        final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
 //        dialog.setTitle("Enable Location")
 //                .setMessage("Your Locations Settings is set to 'Off'.\nPlease Enable Location to use this app")
 //                .setPositiveButton("Location Settings", new DialogInterface.OnClickListener() {

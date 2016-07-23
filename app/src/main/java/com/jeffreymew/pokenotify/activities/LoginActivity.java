@@ -1,22 +1,15 @@
-package com.jeffreymew.pokenotify.fragments;
+package com.jeffreymew.pokenotify.activities;
 
-import android.app.Fragment;
+import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import com.github.rahatarmanahmed.cpv.CircularProgressView;
 import com.jeffreymew.pokenotify.R;
-import com.jeffreymew.pokenotify.ResultCodes;
-import com.jeffreymew.pokenotify.activities.MainActivity;
-import com.pokegoapi.auth.GoogleLogin;
 import com.pokegoapi.auth.PTCLogin;
 import com.pokegoapi.exceptions.LoginFailedException;
 
@@ -31,10 +24,8 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func0;
 import rx.schedulers.Schedulers;
 
-/**
- * Created by Mew on 2016-07-21.
- */
-public class LoginFragment extends Fragment {
+
+public class LoginActivity extends AppCompatActivity {
 
     @BindView(R.id.username)
     EditText mUsername;
@@ -48,12 +39,12 @@ public class LoginFragment extends Fragment {
     @BindView(R.id.loading_spinner_widget)
     View mLoadingSpinnerWidget;
 
-    @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.login_fragment, container, false);
-        ButterKnife.bind(this, view);
-        return view;
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_login);
+
+        ButterKnife.bind(this);
     }
 
     @OnClick(R.id.login_button)
@@ -72,8 +63,8 @@ public class LoginFragment extends Fragment {
                 try {
                     return Observable.just(ptcLogin.login(username, password));
                 } catch (LoginFailedException e) {
-                    Log.e("Pokemans", e.getLocalizedMessage().toString());
-                    Snackbar.make(getActivity().findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
+                    Log.e("PokeNotify", e.getLocalizedMessage().toString());
+                    Snackbar.make(findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
                     showLoadingSpinner(false);
                     return Observable.empty();
                 }
@@ -92,17 +83,14 @@ public class LoginFragment extends Fragment {
                     @Override
                     public void onError(Throwable e) {
                         showLoadingSpinner(false);
-                        Snackbar.make(getActivity().findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
+                        Snackbar.make(findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
                     }
 
                     @Override
                     public void onNext(RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo) {
                         showLoadingSpinner(false);
 
-                        Bundle bundle = new Bundle();
-                        bundle.putSerializable(Extras.AUTH_INFO, authInfo);
-
-                        ((MainActivity) getActivity()).onFragmentResult(ResultCodes.SUCCESS, bundle);
+                        launchMapActivity(authInfo);
                     }
                 });
     }
@@ -115,6 +103,12 @@ public class LoginFragment extends Fragment {
             mLoadingSpinner.stopAnimation();
             mLoadingSpinnerWidget.setVisibility(View.GONE);
         }
+    }
+
+    private void launchMapActivity(RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo) {
+        Intent intent = new Intent(this, MapsActivity.class);
+        intent.putExtra(Extras.AUTH_INFO, authInfo);
+        startActivity(intent);
     }
 
     public class Extras {
