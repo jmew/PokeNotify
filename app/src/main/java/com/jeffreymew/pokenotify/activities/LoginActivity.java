@@ -43,7 +43,6 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
-
         ButterKnife.bind(this);
     }
 
@@ -60,12 +59,13 @@ public class LoginActivity extends AppCompatActivity {
             public Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo> call() {
                 OkHttpClient httpClient = new OkHttpClient();
                 PTCLogin ptcLogin = new PTCLogin(httpClient);
+
                 try {
                     return Observable.just(ptcLogin.login(username, password));
                 } catch (LoginFailedException e) {
-                    Log.e("PokeNotify", e.getLocalizedMessage().toString());
-                    Snackbar.make(findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
                     showLoadingSpinner(false);
+                    Log.e("PokeNotify", e.getLocalizedMessage());
+                    Snackbar.make(findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
                     return Observable.empty();
                 }
             }
@@ -89,7 +89,6 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onNext(RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo) {
                         showLoadingSpinner(false);
-
                         launchMapActivity(authInfo);
                     }
                 });
@@ -106,9 +105,10 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void launchMapActivity(RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo) {
-        Intent intent = new Intent(this, MapsActivity.class);
+        Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra(Extras.AUTH_INFO, authInfo);
         startActivity(intent);
+        finish();
     }
 
     public class Extras {
