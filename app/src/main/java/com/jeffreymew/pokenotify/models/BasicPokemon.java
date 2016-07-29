@@ -12,7 +12,6 @@ import java.io.Serializable;
  */
 public class BasicPokemon implements Serializable {
 
-    private final String mSpawnpointId;
     private final String mName;
     private final int mPokedexId;
     private final long mEncounterId;
@@ -23,7 +22,6 @@ public class BasicPokemon implements Serializable {
     private @DrawableRes int mPokemonImage;
 
     public BasicPokemon(CatchablePokemon catchablePokemon) {
-        mSpawnpointId = catchablePokemon.getSpawnPointId();
         String nameAllCaps = catchablePokemon.getPokemonId().getValueDescriptor().getName();
         mName = nameAllCaps.substring(0, 1) + nameAllCaps.substring(1).toLowerCase();
         mPokedexId = catchablePokemon.getPokemonId().getNumber();
@@ -34,10 +32,6 @@ public class BasicPokemon implements Serializable {
         mEncountered = catchablePokemon.isEncountered();
 
         setPokemonImage();
-    }
-
-    public String getSpawnpointId() {
-        return mSpawnpointId;
     }
 
     public String getName() {
