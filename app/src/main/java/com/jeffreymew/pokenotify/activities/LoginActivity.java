@@ -1,17 +1,25 @@
 package com.jeffreymew.pokenotify.activities;
 
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import com.github.rahatarmanahmed.cpv.CircularProgressView;
 import com.jeffreymew.pokenotify.R;
-import com.pokegoapi.auth.PTCLogin;
+import com.jeffreymew.pokenotify.utils.Utils;
+import com.pokegoapi.auth.PtcLogin;
 import com.pokegoapi.exceptions.LoginFailedException;
+
+import java.util.concurrent.TimeUnit;
 
 import POGOProtos.Networking.Envelopes.RequestEnvelopeOuterClass;
 import butterknife.BindView;
@@ -24,7 +32,6 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func0;
 import rx.schedulers.Schedulers;
 
-
 public class LoginActivity extends AppCompatActivity {
 
     @BindView(R.id.username)
@@ -32,6 +39,9 @@ public class LoginActivity extends AppCompatActivity {
 
     @BindView(R.id.password)
     EditText mPassword;
+
+    @BindView(R.id.sign_up_link)
+    TextView mSignUpLink;
 
     @BindView(R.id.loading_spinner)
     CircularProgressView mLoadingSpinner;
@@ -44,34 +54,67 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         ButterKnife.bind(this);
+
+        checkIfCredentialsCached();
+    }
+
+    @OnClick(R.id.sign_up_link)
+    public void onSignUpLinkClicked() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("https://club.pokemon.com/us/pokemon-trainer-club/sign-up/"));
+        startActivity(intent);
     }
 
     @OnClick(R.id.login_button)
     public void onLoginClicked() {
-//        String username = mUsername.getText().toString();
-//        String password = mPassword.getText().toString();
+        String username = mUsername.getText().toString();
+        String password = mPassword.getText().toString();
 
-        final String username = "xtremeqa";
-        final String password = "Xtreme234";
+        if (!isLoginValid(username, password)) {
+            return;
+        }
 
+        showLoadingSpinner(true);
+
+        login(username, password);
+    }
+
+    private boolean isLoginValid(String username, String password) {
+        boolean valid = true;
+        if (TextUtils.isEmpty(username)) {
+            mUsername.setError(getString(R.string.error_login_required_field));
+            valid = false;
+        }
+
+        if (TextUtils.isEmpty(password)) {
+            mPassword.setError(getString(R.string.error_login_required_field));
+            valid = false;
+        }
+
+        return valid;
+    }
+
+    private void login(final String username, final String password) {
         Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo> loginObservable = Observable.defer(new Func0<Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>>() {
             @Override
             public Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo> call() {
                 OkHttpClient httpClient = new OkHttpClient();
-                PTCLogin ptcLogin = new PTCLogin(httpClient);
+                PtcLogin ptcLogin = new PtcLogin(httpClient);
 
                 try {
                     return Observable.just(ptcLogin.login(username, password));
                 } catch (LoginFailedException e) {
                     showLoadingSpinner(false);
                     Log.e("PokeNotify", e.getLocalizedMessage());
-                    Snackbar.make(findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
+                    if (e.getMessage() == null) {
+                        showLoginWrongCredentialsDialog();
+                    } else {
+                        showLoginErrorDialog();
+                    }
                     return Observable.empty();
                 }
             }
         });
-
-        showLoadingSpinner(true);
 
         loginObservable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -83,12 +126,15 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onError(Throwable e) {
                         showLoadingSpinner(false);
-                        Snackbar.make(findViewById(android.R.id.content), "Login Failed", Snackbar.LENGTH_LONG).show();
+//                        showLoginWrongCredentialsDialog();
+                        showLoginErrorDialog();
+                        Log.e("PokeNotify", e.getMessage());
                     }
 
                     @Override
                     public void onNext(RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo) {
                         showLoadingSpinner(false);
+                        storeUsernamePasswordInSharedPrefs(username, password);
                         launchMapActivity(authInfo);
                     }
                 });
@@ -99,6 +145,7 @@ public class LoginActivity extends AppCompatActivity {
             mLoadingSpinnerWidget.setVisibility(View.VISIBLE);
             mLoadingSpinner.startAnimation();
         } else {
+            //TODO wrap in RxCall?
             mLoadingSpinner.stopAnimation();
             mLoadingSpinnerWidget.setVisibility(View.GONE);
         }
@@ -111,7 +158,53 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
+    private void showLoginErrorDialog() {
+        Utils.showErrorDialog(this, "Login Failed", "Sorry login failed. Maybe the PokemonGo servers are down?", true, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                onLoginClicked();
+            }
+        });
+    }
+
+    private void showLoginWrongCredentialsDialog() {
+        Utils.showErrorDialog(this, "Login Failed", "The credentials you entered did not match any account.", false, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                onLoginClicked();
+            }
+        });
+        //TODO find when to use this
+    }
+
+    private void storeUsernamePasswordInSharedPrefs(final String username, final String password) {
+        SharedPreferences prefs = getSharedPreferences(Extras.LOGIN_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(Extras.USERNAME, username);
+        editor.putString(Extras.PASSWORD, password);
+        editor.putLong(Extras.TIMESTAMP, System.currentTimeMillis());
+        editor.apply();
+    }
+
+    private void checkIfCredentialsCached() {
+        SharedPreferences prefs = getSharedPreferences(Extras.LOGIN_PREFS, Context.MODE_PRIVATE);
+        long cachedTime = System.currentTimeMillis() - prefs.getLong(Extras.TIMESTAMP, 90);
+
+        // Cache credentials for 60 minutes
+        if (TimeUnit.MILLISECONDS.toMinutes(cachedTime) < 60) {
+            mUsername.setText(prefs.getString(Extras.USERNAME, ""));
+            mPassword.setText(prefs.getString(Extras.PASSWORD, ""));
+            onLoginClicked();
+        } else {
+            prefs.edit().clear().apply(); //TODO check clears cache every 60 mins
+        }
+    }
+
     public class Extras {
         public static final String AUTH_INFO = "auth_info";
+        public static final String USERNAME = "username";
+        public static final String PASSWORD = "password";
+        public static final String TIMESTAMP = "timestamp";
+        public static final String LOGIN_PREFS = "login_preferences";
     }
 }

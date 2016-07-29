@@ -4,10 +4,19 @@
     android:layout_height="match_parent"
     android:gravity="center">
 
-    <ToggleButton
-        android:id="@+id/static_location_toggle"
+    <ListView
+        android:id="@+id/settings_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+    </ListView>
+
+    <Button
+        android:id="@+id/settings_pokemon_selector"
+        android:text="Choose which pokemon to get notifications for"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
+
 
     <SeekBar
         android:id="@+id/distance_slider"

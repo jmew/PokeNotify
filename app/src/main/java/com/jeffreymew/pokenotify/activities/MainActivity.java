@@ -1,22 +1,26 @@
 package com.jeffreymew.pokenotify.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 
-import com.google.gson.Gson;
 import com.jeffreymew.pokenotify.R;
 import com.jeffreymew.pokenotify.fragments.MapFragment;
+import com.jeffreymew.pokenotify.models.BasicPokemon;
 import com.jeffreymew.pokenotify.viewpagers.PageAdapter;
-import com.pokegoapi.api.map.Pokemon.CatchablePokemon;
 
 import POGOProtos.Networking.Envelopes.RequestEnvelopeOuterClass;
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import rx.Observable;
+import rx.subjects.ReplaySubject;
 
-public class MainActivity extends FragmentActivity {
+public class MainActivity extends FragmentActivity implements NotificationActivity {
+
+    private ReplaySubject<BasicPokemon> mOnNewIntentSubject = ReplaySubject.create();
 
     @BindView(R.id.tab_layout)
     TabLayout mTabLayout;
@@ -30,18 +34,11 @@ public class MainActivity extends FragmentActivity {
 
         RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo = (RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo) getIntent().getSerializableExtra(LoginActivity.Extras.AUTH_INFO);
 
-        CatchablePokemon pokemon = null;
-        String pokemonStringObject = getIntent().getStringExtra(MapFragment.Extras.POKEMON);
-        if (pokemonStringObject != null) {
-            Gson gson = new Gson();
-            pokemon = gson.fromJson(pokemonStringObject, CatchablePokemon.class);
-        }
-
         mTabLayout.addTab(mTabLayout.newTab().setText("Map"));
         mTabLayout.addTab(mTabLayout.newTab().setText("Settings"));
         mTabLayout.setTabGravity(TabLayout.GRAVITY_FILL);
 
-        final PagerAdapter adapter = new PageAdapter(getSupportFragmentManager(), mTabLayout.getTabCount(), authInfo, pokemon);
+        final PagerAdapter adapter = new PageAdapter(getSupportFragmentManager(), mTabLayout.getTabCount(), authInfo);
         final ViewPager viewPager = (ViewPager) findViewById(R.id.pager);
         viewPager.setAdapter(adapter);
         viewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(mTabLayout));
@@ -60,5 +57,19 @@ public class MainActivity extends FragmentActivity {
             public void onTabReselected(TabLayout.Tab tab) {
             }
         });
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        mTabLayout.getTabAt(0).select();
+
+        BasicPokemon pokemon = (BasicPokemon) intent.getSerializableExtra(MapFragment.Extras.POKEMON);
+        mOnNewIntentSubject.onNext(pokemon);
+    }
+
+    @Override
+    public Observable<BasicPokemon> getNotificationObservable() {
+        return mOnNewIntentSubject.asObservable();
     }
 }
