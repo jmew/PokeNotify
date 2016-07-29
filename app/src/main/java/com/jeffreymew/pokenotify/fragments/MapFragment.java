@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -40,6 +41,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.jeffreymew.pokenotify.R;
 import com.jeffreymew.pokenotify.activities.LoginActivity;
@@ -161,6 +163,15 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
             mMap.moveCamera(CameraUpdateFactory.newLatLng(defaultLocation));
         }
 
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            public void onInfoWindowClick(Marker marker) {
+                Intent launchIntent = getActivity().getPackageManager().getLaunchIntentForPackage("com.nianticlabs.pokemongo");
+                if (launchIntent != null) {
+                    startActivity(launchIntent);
+                }
+            }
+        });
+
         mFindingGPSSignalSnackbar.show();
     }
 
@@ -186,7 +197,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Subscriber<PokemonGo>() {
                     @Override
-                    public void onCompleted() { }
+                    public void onCompleted() {
+                    }
 
                     @Override
                     public void onError(Throwable e) {
@@ -342,7 +354,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                     case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
                         try {
                             status.startResolutionForResult(getActivity(), 1000);
-                        } catch (IntentSender.SendIntentException e) { }
+                        } catch (IntentSender.SendIntentException e) {
+                        }
                         break;
                     case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
                         break;
