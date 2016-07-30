@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -25,6 +26,7 @@ import POGOProtos.Networking.Envelopes.RequestEnvelopeOuterClass;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import butterknife.OnEditorAction;
 import okhttp3.OkHttpClient;
 import rx.Observable;
 import rx.Subscriber;
@@ -77,6 +79,15 @@ public class LoginActivity extends AppCompatActivity {
         showLoadingSpinner(true);
 
         login(username, password);
+    }
+
+    @OnEditorAction(R.id.password)
+    public boolean onNextKeypress(int actionId) {
+        if (actionId == EditorInfo.IME_ACTION_DONE) {
+            onLoginClicked();
+            return true;
+        }
+        return false;
     }
 
     private boolean isLoginValid(String username, String password) {
