@@ -76,7 +76,7 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        showLoadingSpinner(true);
+        showLoadingSpinner(true, false);
 
         login(username, password);
     }
@@ -106,7 +106,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void login(final String username, final String password) {
-        Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo> loginObservable = Observable.defer(new Func0<Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>>() {
+        Observable.defer(new Func0<Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>>() {
             @Override
             public Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo> call() {
                 OkHttpClient httpClient = new OkHttpClient();
@@ -118,9 +118,7 @@ public class LoginActivity extends AppCompatActivity {
                     return Observable.error(e);
                 }
             }
-        });
-
-        loginObservable.subscribeOn(Schedulers.io())
+        }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .timeout(10, TimeUnit.SECONDS)
                 .subscribe(new Subscriber<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>() {
@@ -130,31 +128,32 @@ public class LoginActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(Throwable e) {
-                        showLoadingSpinner(false);
+                        showLoadingSpinner(false, false);
                         showLoginErrorDialog();
 
-                        if (e.getMessage() == null) {
+                        if (e.getMessage() != null) {
                             Log.e("PokeNotify", e.getMessage());
                         }
                     }
 
                     @Override
                     public void onNext(RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo authInfo) {
-                        showLoadingSpinner(false);
+                        showLoadingSpinner(false, true);
                         storeUsernamePasswordInSharedPrefs(username, password);
                         launchMapActivity(authInfo);
                     }
                 });
     }
 
-    private void showLoadingSpinner(boolean show) {
+    private void showLoadingSpinner(boolean show, boolean success) {
         if (show) {
             mLoadingSpinnerWidget.setVisibility(View.VISIBLE);
             mLoadingSpinner.startAnimation();
         } else {
-            //TODO wrap in RxCall?
             mLoadingSpinner.stopAnimation();
-            mLoadingSpinnerWidget.setVisibility(View.GONE);
+            if (!success) {
+                mLoadingSpinnerWidget.setVisibility(View.GONE);
+            }
         }
     }
 

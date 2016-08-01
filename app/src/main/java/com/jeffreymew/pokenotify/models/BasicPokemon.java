@@ -8,7 +8,6 @@ import com.pokegoapi.api.map.pokemon.CatchablePokemon;
 import java.io.Serializable;
 
 import io.realm.RealmObject;
-import io.realm.annotations.Ignore;
 
 /**
  * Created by mew on 2016-07-24.
@@ -21,9 +20,7 @@ public class BasicPokemon extends RealmObject implements Serializable {
     private long mExpirationTimestampMs;
     private double mLatitude;
     private double mLongitude;
-    @Ignore
     private boolean mEncountered;
-    @Ignore
     private @DrawableRes int mPokemonImage;
 
     public BasicPokemon() { }

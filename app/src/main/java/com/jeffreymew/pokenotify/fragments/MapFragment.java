@@ -44,6 +44,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.jeffreymew.pokenotify.R;
@@ -127,7 +128,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
         mLocationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
 
         RealmConfiguration realmConfig = new RealmConfiguration.Builder(getActivity()).build();
-        Realm.deleteRealm(realmConfig);
+        Realm.deleteRealm(realmConfig); //TODO clear current
         Realm.setDefaultConfiguration(realmConfig);
 
         mRealm = Realm.getDefaultInstance();
@@ -149,7 +150,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
             public void call(BasicPokemon pokemon) {
                 if (pokemon != null && mMap != null) {
                     LatLng pokemonLocation = new LatLng(pokemon.getLatitude(), pokemon.getLongitude());
-                    mMap.addMarker(createMarker(pokemon)); //TODO get from cache
                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pokemonLocation, MARKER_ZOOM_LEVEL));
                 }
             }
@@ -173,12 +173,13 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     @Override
     public void onMapReady(GoogleMap googleMap) {
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            showEnableLocationDialog(); //TODO does this handle permissions error?
+            showEnableLocationDialog();
             return;
         }
 
         mMap = googleMap;
         mMap.setMyLocationEnabled(true);
+        //TODO remove buttons at bottom
 
         Criteria criteria = new Criteria();
         if (mLocationManager.getLastKnownLocation(mLocationManager.getBestProvider(criteria, false)) != null) {
@@ -219,7 +220,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     }
 
     private void setupPokemon() {
-        Observable<PokemonGo> observable = Observable.defer(new Func0<Observable<PokemonGo>>() {
+        Observable.defer(new Func0<Observable<PokemonGo>>() {
             @Override
             public Observable<PokemonGo> call() {
                 try {
@@ -228,9 +229,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                     return Observable.error(e);
                 }
             }
-        });
-
-        observable.subscribeOn(Schedulers.io())
+        }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .timeout(10, TimeUnit.SECONDS)
                 .subscribe(new Subscriber<PokemonGo>() {
@@ -280,9 +279,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
 //        for (LatLng latlng : latlngMap) {
 //            mPokemonClient.setLatitude(latlng.latitude);
 //            mPokemonClient.setLongitude(latlng.longitude);
-        final List<CatchablePokemon> pokemonFound = new ArrayList<>();
-
-        Observable<CatchablePokemon> observable = Observable.defer(new Func0<Observable<CatchablePokemon>>() {
+        Observable.defer(new Func0<Observable<CatchablePokemon>>() {
             @Override
             public Observable<CatchablePokemon> call() {
                 try {
@@ -291,17 +288,16 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                     return Observable.error(e);
                 }
             }
-        });
-
-        observable.subscribeOn(Schedulers.io())
+        }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .timeout(10, TimeUnit.SECONDS)
+                //.timeout(10, TimeUnit.SECONDS)
                 .subscribe(new Subscriber<CatchablePokemon>() {
                     @Override
                     public void onCompleted() {
                         showLoadingSpinner(false);
-                        if (pokemonFound.size() == 0) {
-                            Utils.showGenericDialog(getActivity(), "No Pokemon Here :(", "Maybe try looking somewhere else?");
+
+                        if (!arePokemonNearby()) {
+                            Utils.showGenericDialog(getActivity(), "No Pokemon Nearby", "Maybe try looking somewhere else?");
                         }
                     }
 
@@ -322,8 +318,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
 
                     @Override
                     public void onNext(CatchablePokemon catchablePokemon) {
-                        pokemonFound.add(catchablePokemon);
-
                         BasicPokemon pokemon = new BasicPokemon(catchablePokemon);
 
                         if (shouldShowNotification && checkIfNotificationForPokemonIsEnabled(catchablePokemon.getPokemonId().getValueDescriptor().getName())) {
@@ -357,7 +351,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                         public void call(Subscriber<? super Void> subscriber) {
                             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, DEFAULT_ZOOM_LEVEL));
                             subscriber.onNext(null);
-
                         }
                     }).subscribe(new Action1<Void>() {
                         @Override
@@ -501,7 +494,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
         newCenterOfMap.setLatitude(mMap.getCameraPosition().target.latitude);
         newCenterOfMap.setLongitude(mMap.getCameraPosition().target.longitude);
 
-        if (mPreviousCenterOfMap.distanceTo(newCenterOfMap) > 175) { // 1km
+        if (mPreviousCenterOfMap.distanceTo(newCenterOfMap) > 150) { // 1km
             mRedoSearchButton.setVisibility(View.VISIBLE);
         }
     }
@@ -546,7 +539,12 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     }
 
     private void clearExpiredPokemon() {
-        final RealmResults<BasicPokemon> expiredPokemon = mRealm.where(BasicPokemon.class).lessThan("mExpirationTimestampMs", 0).findAll();
+        final RealmResults<BasicPokemon> expiredPokemon = mRealm.where(BasicPokemon.class).lessThan("mExpirationTimestampMs", System.currentTimeMillis()).findAll();
+
+        for (BasicPokemon pokemon : expiredPokemon) {
+            mMarkers.get(pokemon.getEncounterId()).remove();
+            mMarkers.remove(pokemon.getEncounterId());
+        }
 
         mRealm.executeTransaction(new Realm.Transaction() {
             @Override
@@ -554,11 +552,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                 expiredPokemon.deleteAllFromRealm();
             }
         });
-
-        for (BasicPokemon pokemon : expiredPokemon) {
-            mMarkers.get(pokemon.getEncounterId()).remove();
-            mMarkers.remove(pokemon.getEncounterId());
-        }
     }
 
     private void updateMarkers() {
@@ -566,6 +559,16 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
             marker.getValue().remove();
             mMarkers.put(marker.getKey(), mMap.addMarker(createMarker(mRealm.where(BasicPokemon.class).equalTo("mEncounterId", marker.getKey()).findAll().get(0))));
         }
+    }
+
+    private boolean arePokemonNearby() {
+        LatLngBounds bounds = mMap.getProjection().getVisibleRegion().latLngBounds;
+        double minLat = bounds.southwest.latitude;
+        double minLng = bounds.southwest.longitude;
+        double maxLat = bounds.northeast.latitude;
+        double maxLng = bounds.northeast.longitude;
+
+        return mRealm.where(BasicPokemon.class).between("mLatitude", minLat, maxLat).between("mLongitude", minLng, maxLng).count() > 0;
     }
 
     private void showLoadingSpinner(boolean show) {
