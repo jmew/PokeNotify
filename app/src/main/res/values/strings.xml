@@ -7,6 +7,7 @@
     <string name="create_account">No account? Create one</string>
     <string name="gps_loading">Waiting for GPS signal...</string>
     <string name="error_login_required_field">Required Field</string>
+    <string name="redo_search_button">Redo Search In This Area</string>
 
     <string-array name="pokemon_list" >
         <item>Abra</item>

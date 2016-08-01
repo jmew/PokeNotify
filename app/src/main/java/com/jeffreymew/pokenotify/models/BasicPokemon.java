@@ -7,19 +7,26 @@ import com.pokegoapi.api.map.pokemon.CatchablePokemon;
 
 import java.io.Serializable;
 
+import io.realm.RealmObject;
+import io.realm.annotations.Ignore;
+
 /**
  * Created by mew on 2016-07-24.
  */
-public class BasicPokemon implements Serializable {
+public class BasicPokemon extends RealmObject implements Serializable {
 
-    private final String mName;
-    private final int mPokedexId;
-    private final long mEncounterId;
-    private final long mExpirationTimestampMs;
-    private final double mLatitude;
-    private final double mLongitude;
+    private String mName;
+    private int mPokedexId;
+    private long mEncounterId;
+    private long mExpirationTimestampMs;
+    private double mLatitude;
+    private double mLongitude;
+    @Ignore
     private boolean mEncountered;
+    @Ignore
     private @DrawableRes int mPokemonImage;
+
+    public BasicPokemon() { }
 
     public BasicPokemon(CatchablePokemon catchablePokemon) {
         String nameAllCaps = catchablePokemon.getPokemonId().getValueDescriptor().getName();

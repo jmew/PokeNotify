@@ -115,20 +115,14 @@ public class LoginActivity extends AppCompatActivity {
                 try {
                     return Observable.just(ptcLogin.login(username, password));
                 } catch (LoginFailedException e) {
-                    showLoadingSpinner(false);
-                    Log.e("PokeNotify", e.getLocalizedMessage());
-                    if (e.getMessage() == null) {
-                        showLoginWrongCredentialsDialog();
-                    } else {
-                        showLoginErrorDialog();
-                    }
-                    return Observable.empty();
+                    return Observable.error(e);
                 }
             }
         });
 
         loginObservable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
+                .timeout(10, TimeUnit.SECONDS)
                 .subscribe(new Subscriber<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>() {
                     @Override
                     public void onCompleted() {
@@ -137,9 +131,11 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onError(Throwable e) {
                         showLoadingSpinner(false);
-//                        showLoginWrongCredentialsDialog();
                         showLoginErrorDialog();
-                        Log.e("PokeNotify", e.getMessage());
+
+                        if (e.getMessage() == null) {
+                            Log.e("PokeNotify", e.getMessage());
+                        }
                     }
 
                     @Override
@@ -176,16 +172,6 @@ public class LoginActivity extends AppCompatActivity {
                 onLoginClicked();
             }
         });
-    }
-
-    private void showLoginWrongCredentialsDialog() {
-        Utils.showErrorDialog(this, "Login Failed", "The credentials you entered did not match any account.", false, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                onLoginClicked();
-            }
-        });
-        //TODO find when to use this
     }
 
     private void storeUsernamePasswordInSharedPrefs(final String username, final String password) {

@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
@@ -52,10 +53,10 @@ public class Utils {
 
     public static Dialog showErrorDialog(final Context context, String title, String message, boolean shouldShowServerStatus, DialogInterface.OnClickListener retryListener) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle(title);
-        builder.setMessage(message);
-        builder.setPositiveButton("Retry", retryListener);
-        builder.setNegativeButton("Cancel", null);
+        builder.setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("Retry", retryListener)
+                .setNegativeButton("Cancel", null);
 
         if (shouldShowServerStatus) {
             builder.setNeutralButton("Server Status", new DialogInterface.OnClickListener() {
@@ -74,6 +75,27 @@ public class Utils {
         return dialog;
     }
 
+    public static Dialog showGenericDialog(final Context context, String title, String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(title)
+                .setMessage(message);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        return dialog;
+    }
+
+    public static boolean isPokemonGoInstalled(Context context) {
+        PackageManager pm = context.getPackageManager();
+        try {
+            pm.getPackageInfo("com.nianticlabs.pokemongo", PackageManager.GET_ACTIVITIES);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
     private static void createNotification(final Context context, final BasicPokemon pokemon, final Location currentLocation, final Drawable map) {
         Location pokemonLocation = new Location(LocationManager.NETWORK_PROVIDER);
         pokemonLocation.setLatitude(pokemon.getLatitude());
@@ -83,18 +105,9 @@ public class Utils {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm:ss a");
         simpleDateFormat.setTimeZone(TimeZone.getDefault());
 
-//        final RemoteViews customMapNotificationView = new RemoteViews(context.getPackageName(), R.layout.map_notification);
-//        customMapNotificationView.setImageViewResource(R.id.map_image, R.mipmap.ic_launcher);
-//        customMapNotificationView.setImageViewResource(R.id.button_icon, R.drawable.ic_pokemon_go_logo);
-//        customMapNotificationView.setTextViewText(R.id.button_text, "Launch Pokemon Go");
-//        customMapNotificationView.setTextColor(R.id.button_text, context.getResources().getColor(android.R.color.black));
-
-        PendingIntent launchPokemonGoIntent = PendingIntent.getActivity(context, 0, context.getPackageManager().getLaunchIntentForPackage("com.nianticlabs.pokemongo"), 0);
-
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
         builder.setContentTitle(pokemon.getName() + " Nearby!")
                 .setContentText(Math.round(currentLocation.distanceTo(pokemonLocation)) + " meters away. Until " + simpleDateFormat.format(date))
-                //.setCustomBigContentView(customMapNotificationView)
                 .setTicker(pokemon.getName() + " Nearby!")
                 .setSmallIcon(pokemon.getPokemonImage())
                 .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), pokemon.getPokemonImage()))
@@ -102,8 +115,12 @@ public class Utils {
                 .setVibrate(new long[]{500, 500, 500})
                 .setLights(Color.YELLOW, 2000, 2000)
                 .setOnlyAlertOnce(true)
-                .setAutoCancel(true)
-                .addAction(R.drawable.ic_pokemon_go_logo, "Launch Pokemon Go", launchPokemonGoIntent);
+                .setAutoCancel(true);
+
+        if (isPokemonGoInstalled(context)) {
+            PendingIntent launchPokemonGoIntent = PendingIntent.getActivity(context, 0, context.getPackageManager().getLaunchIntentForPackage("com.nianticlabs.pokemongo"), 0);
+            builder.addAction(R.drawable.ic_pokemon_go_logo, "Launch Pokemon Go", launchPokemonGoIntent);
+        }
 
         Intent resultIntent = new Intent(context, MainActivity.class);
         resultIntent.putExtra(MapFragment.Extras.POKEMON, pokemon);
@@ -121,13 +138,6 @@ public class Utils {
             public void run() {
                 notificationManager.cancel((int) pokemon.getEncounterId());
             }
-        }, pokemon.getMillisUntilDespawn()); //TODO redo with RX
-
-        // Load static map image into notification
-//        NotificationTarget notificationTarget = new NotificationTarget(context, customMapNotificationView, R.id.map_image, notification, (int) Math.abs(pokemon.getEncounterId()));
-//        Glide.with(context.getApplicationContext()) // safer!
-//                .load(STATIC_MAPS_URL)
-//                .asBitmap()
-//                .into(notificationTarget);
+        }, pokemon.getMillisUntilDespawn());
     }
 }
