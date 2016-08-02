@@ -612,6 +612,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     private void showLoadingSpinner(boolean show) {
         if (show) {
             mLoadingSpinnerWidget.setVisibility(View.VISIBLE);
+            mLoadingSpinnerWidget.setOnClickListener(null); //To prevent touch events from happening
             mLoadingSpinner.startAnimation();
         } else {
             mLoadingSpinner.stopAnimation();

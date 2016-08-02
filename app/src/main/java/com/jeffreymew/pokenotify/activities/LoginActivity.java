@@ -163,6 +163,7 @@ public class LoginActivity extends AppCompatActivity {
     private void showLoadingSpinner(boolean show, boolean success) {
         if (show) {
             mLoadingSpinnerWidget.setVisibility(View.VISIBLE);
+            mLoadingSpinnerWidget.setOnClickListener(null);
             mLoadingSpinner.startAnimation();
         } else {
             mLoadingSpinner.stopAnimation();
