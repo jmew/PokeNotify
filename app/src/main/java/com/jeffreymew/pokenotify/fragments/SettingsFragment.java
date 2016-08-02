@@ -97,30 +97,35 @@ public class SettingsFragment extends Fragment {
                         updateSharedPrefs();
                     }
                 })
-                .setNegativeButton("Add All", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        for (int index = 0; index < checkedPokemon.length; index++) {
-                            checkedPokemon[index] = true;
-                            ((AlertDialog) dialogInterface).getListView().setItemChecked(index, true);
-                            mPokemonMap.put(checkmarkToPokemonName.get(index), true);
-                        }
-                        updateSharedPrefs();
-                    }
-                }).setNeutralButton("Clear All", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        for (int index = 0; index < checkedPokemon.length; index++) {
-                            checkedPokemon[index] = false;
-                            ((AlertDialog) dialogInterface).getListView().setItemChecked(index, false);
-                            mPokemonMap.put(checkmarkToPokemonName.get(index), false);
-                        }
-                        updateSharedPrefs();
-                    }
-                });
+                .setNegativeButton("Add All", null)
+                .setNeutralButton("Clear All", null);
 
-        AlertDialog dialog = builder.create();
+        final AlertDialog dialog = builder.create();
         dialog.show();
+
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                for (int index = 0; index < checkedPokemon.length; index++) {
+                    checkedPokemon[index] = true;
+                    dialog.getListView().setItemChecked(index, true);
+                    mPokemonMap.put(checkmarkToPokemonName.get(index), true);
+                }
+                updateSharedPrefs();
+            }
+
+        });
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                for (int index = 0; index < checkedPokemon.length; index++) {
+                    checkedPokemon[index] = false;
+                    dialog.getListView().setItemChecked(index, false);
+                    mPokemonMap.put(checkmarkToPokemonName.get(index), false);
+                }
+                updateSharedPrefs();
+            }
+        });
     }
 
 //    private void onGPSSettingClicked() {
