@@ -129,10 +129,11 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
         mLocationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
 
         RealmConfiguration realmConfig = new RealmConfiguration.Builder(getActivity()).build();
-        Realm.deleteRealm(realmConfig);
         Realm.setDefaultConfiguration(realmConfig);
-
         mRealm = Realm.getDefaultInstance();
+        mRealm.beginTransaction();
+        mRealm.deleteAll();
+        mRealm.commitTransaction();
 
         setupPokemon();
         setupLocationListeners();
@@ -144,6 +145,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     @Override
     public void onResume() {
         super.onResume();
+        mRealm = Realm.getDefaultInstance(); //TODO do i need?
 
         Observable<BasicPokemon> subject = ((NotificationActivity) getActivity()).getNotificationObservable();
         mNotificationSubscriber = subject.subscribe(new Action1<BasicPokemon>() {
@@ -160,6 +162,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     @Override
     public void onPause() {
         mNotificationSubscriber.unsubscribe();
+        mRealm.close();
         super.onPause();
     }
 
@@ -371,6 +374,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                         }
                     }
                 });
+        //.interval(
         //}
     }
 
