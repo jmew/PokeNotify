@@ -8,6 +8,8 @@
     <string name="gps_loading">Waiting for GPS signal...</string>
     <string name="error_login_required_field">Required Field</string>
     <string name="redo_search_button">Redo Search In This Area</string>
+    <string name="login_disclaimer_message">Note: Do not use your main account. It may get banned and I take no responsibility for banned accounts.</string>
+    <string name="login_instructions">Enter your Pokemon Trainer Club credentials</string>
 
     <string-array name="pokemon_list" >
         <item>Abra</item>
@@ -94,7 +96,7 @@
         <item>Mew</item>
         <item>Mewtwo</item>
         <item>Moltres</item>
-        <item>Mrmime</item>
+        <item>Mr. Mime</item>
         <item>Muk</item>
         <item>Nidoking</item>
         <item>Nidoqueen</item>

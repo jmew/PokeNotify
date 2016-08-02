@@ -5,20 +5,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@color/colorPrimary">
 
-    <TextView
-        android:id="@+id/app_title"
-        android:text="POKÉNOTIFY"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="90dp"
-        android:textSize="50dp"
-        android:fontFamily="sans-serif-condensed"
-        android:textStyle="bold"
-        android:textColor="@android:color/white"/>
-
     <LinearLayout
-        android:layout_alignTop="@id/app_title"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -28,7 +15,19 @@
         android:padding="30dp">
 
         <TextView
-            android:text="Enter your Pokemon Trainer Club credentials"
+            android:id="@+id/app_title"
+            android:text="POKÉNOTIFY"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="50dp"
+            android:layout_marginTop="60dp"
+            android:layout_marginBottom="70dp"
+            android:fontFamily="sans-serif-condensed"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:text="@string/login_instructions"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"
@@ -84,7 +83,23 @@
             android:text="@string/create_account"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
             android:textColor="@android:color/white"/>
+        
+        <android.support.v4.widget.Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <TextView
+            android:textSize="10dp"
+            android:text="@string/login_disclaimer_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:gravity="center"
+            android:textColor="@android:color/white" />
     </LinearLayout>
 
     <LinearLayout
