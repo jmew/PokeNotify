@@ -16,6 +16,8 @@ import android.net.Uri;
 import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.NotificationCompat;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.GlideBitmapDrawable;
@@ -43,12 +45,13 @@ public class Utils {
         String STATIC_MAPS_URL = "http://maps.google.com/maps/api/staticmap?center=" + pokemon.getLatitude() + "," + pokemon.getLongitude() + "&zoom=17&scale=2&size=" + STATIC_MAP_WIDTH + "x" +
                 STATIC_MAP_HEIGHT + "&maptype=roadmap&markers=color:red%7C" + pokemon.getLatitude() + "," + pokemon.getLongitude() + "&key=" + context.getString(R.string.google_maps_key);
 
-        Glide.with(context).load(STATIC_MAPS_URL).into(new SimpleTarget<GlideDrawable>() {
+
+        Glide.with(context.getApplicationContext()).load(STATIC_MAPS_URL).into(new SimpleTarget<GlideDrawable>() {
             @Override
             public void onResourceReady(GlideDrawable resource, GlideAnimation<? super GlideDrawable> glideAnimation) {
                 createNotification(context, pokemon, currentLocation, resource.getCurrent());
             }
-        });
+        }); //TODO replace with .asBitmap()
     }
 
     public static Dialog showErrorDialog(final Context context, String title, String message, boolean shouldShowServerStatus, DialogInterface.OnClickListener retryListener) {
@@ -96,6 +99,11 @@ public class Utils {
         }
     }
 
+    public static void hideSoftKeyboard(View view) {
+        InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
     private static void createNotification(final Context context, final BasicPokemon pokemon, final Location currentLocation, final Drawable map) {
         Location pokemonLocation = new Location(LocationManager.NETWORK_PROVIDER);
         pokemonLocation.setLatitude(pokemon.getLatitude());
@@ -113,7 +121,7 @@ public class Utils {
                 .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), pokemon.getPokemonImage()))
                 .setStyle(new NotificationCompat.BigPictureStyle().bigPicture(((GlideBitmapDrawable) map).getBitmap()))
                 .setVibrate(new long[]{500, 500, 500})
-                .setLights(Color.YELLOW, 2000, 2000)
+                .setLights(Color.CYAN, 2000, 2000)
                 .setOnlyAlertOnce(true)
                 .setAutoCancel(true);
 
@@ -125,7 +133,7 @@ public class Utils {
         Intent resultIntent = new Intent(context, MainActivity.class);
         resultIntent.putExtra(MapFragment.Extras.POKEMON, pokemon);
 
-        PendingIntent resultPendingIntent = PendingIntent.getActivity(context, (int) pokemon.getEncounterId(), resultIntent, PendingIntent.FLAG_UPDATE_CURRENT); //TODO check if long to int conversion fails
+        PendingIntent resultPendingIntent = PendingIntent.getActivity(context, (int) pokemon.getEncounterId(), resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(resultPendingIntent);
 
         final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);

@@ -14,7 +14,6 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.NumberPicker;
 
 import com.jeffreymew.pokenotify.R;
 
@@ -52,9 +51,9 @@ public class SettingsFragment extends Fragment {
                     case 0:
                         onPokemonSelectorClicked();
                         break;
-                    case 1:
-                        onGPSSettingClicked();
-                        break;
+//                    case 1:
+//                        onGPSSettingClicked();
+//                        break;
                 }
             }
         });
@@ -124,35 +123,35 @@ public class SettingsFragment extends Fragment {
         dialog.show();
     }
 
-    private void onGPSSettingClicked() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        final AlertDialog dialog = builder.setView(R.layout.number_picker)
-                .setTitle("Choose the refresh interval for GPS and fetching new Pokemon")
-                .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                    }
-                })
-                .setNeutralButton("Cancel", null)
-                .create();
-
-        dialog.findViewById(android.R.id.button1).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                int refreshInterval = ((NumberPicker) view).getValue();
-                SharedPreferences.Editor editor = mPrefs.edit();
-                editor.putInt("RefreshInterval", refreshInterval);
-                editor.apply();
-            }
-        }); //TODO check if this works
-
-        dialog.show();
-
-        NumberPicker numberPicker = (NumberPicker) dialog.findViewById(R.id.number_picker);
-        numberPicker.setMaxValue(90);
-        numberPicker.setValue(mPrefs.getInt("RefreshInterval", 30));
-        numberPicker.setMinValue(15);
-    }
+//    private void onGPSSettingClicked() {
+//        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+//        final AlertDialog dialog = builder.setView(R.layout.number_picker)
+//                .setTitle("Choose the refresh interval for GPS and fetching new Pokemon")
+//                .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+//                    @Override
+//                    public void onClick(DialogInterface dialogInterface, int i) {
+//                    }
+//                })
+//                .setNeutralButton("Cancel", null)
+//                .create();
+//
+//        dialog.findViewById(android.R.id.button1).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                int refreshInterval = ((NumberPicker) view).getValue();
+//                SharedPreferences.Editor editor = mPrefs.edit();
+//                editor.putInt("RefreshInterval", refreshInterval);
+//                editor.apply();
+//            }
+//        }); //TODO check if this works
+//
+//        dialog.show();
+//
+//        NumberPicker numberPicker = (NumberPicker) dialog.findViewById(R.id.number_picker);
+//        numberPicker.setMaxValue(90);
+//        numberPicker.setValue(mPrefs.getInt("RefreshInterval", 30));
+//        numberPicker.setMinValue(15);
+//    }
 
     private void updateSharedPrefs() {
         SharedPreferences.Editor editor = mPrefs.edit();

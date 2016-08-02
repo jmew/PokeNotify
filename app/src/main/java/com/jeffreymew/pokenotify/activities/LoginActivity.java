@@ -8,7 +8,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
@@ -32,6 +31,7 @@ import rx.Observable;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func0;
+import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 public class LoginActivity extends AppCompatActivity {
@@ -71,6 +71,8 @@ public class LoginActivity extends AppCompatActivity {
     public void onLoginClicked() {
         String username = mUsername.getText().toString();
         String password = mPassword.getText().toString();
+
+        Utils.hideSoftKeyboard(mPassword);
 
         if (!isLoginValid(username, password)) {
             return;
@@ -120,7 +122,24 @@ public class LoginActivity extends AppCompatActivity {
             }
         }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .timeout(10, TimeUnit.SECONDS)
+                .timeout(8, TimeUnit.SECONDS) //TODO do i need?
+                .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
+                    int MAX_RETRIES = 2;
+                    int retryCount = 0;
+
+                    @Override
+                    public Observable<?> call(Observable<? extends Throwable> observable) {
+                        return observable.flatMap(new Func1<Object, Observable<?>>() {
+                            @Override
+                            public Observable<?> call(Object o) {
+                                if (++retryCount < MAX_RETRIES) {
+                                    return Observable.timer(2, TimeUnit.SECONDS); //2 second delay
+                                }
+                                return Observable.error((Throwable) o);
+                            }
+                        });
+                    }
+                }) //TODO move to compose
                 .subscribe(new Subscriber<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>() {
                     @Override
                     public void onCompleted() {
@@ -130,10 +149,6 @@ public class LoginActivity extends AppCompatActivity {
                     public void onError(Throwable e) {
                         showLoadingSpinner(false, false);
                         showLoginErrorDialog();
-
-                        if (e.getMessage() != null) {
-                            Log.e("PokeNotify", e.getMessage());
-                        }
                     }
 
                     @Override
@@ -192,7 +207,7 @@ public class LoginActivity extends AppCompatActivity {
             mPassword.setText(prefs.getString(Extras.PASSWORD, ""));
             onLoginClicked();
         } else {
-            prefs.edit().clear().apply(); //TODO check clears cache every 60 mins
+            prefs.edit().clear().apply();
         }
     }
 

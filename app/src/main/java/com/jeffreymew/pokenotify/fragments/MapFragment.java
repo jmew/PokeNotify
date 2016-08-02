@@ -15,12 +15,12 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -79,6 +79,7 @@ import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.functions.Func0;
+import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 
@@ -99,7 +100,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     private PokemonGo mPokemonClient;
     private GoogleMap mMap;
     private Snackbar mFindingGPSSignalSnackbar;
-    private Subscription mNotificationSubscriber; //TODO maybe should be subscriber?
+    private Subscription mNotificationSubscriber;
     private Dialog mLatestDialog;
     private NotificationDB mNotificationDB;
     private RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo mAuthInfo;
@@ -128,7 +129,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
         mLocationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
 
         RealmConfiguration realmConfig = new RealmConfiguration.Builder(getActivity()).build();
-        Realm.deleteRealm(realmConfig); //TODO clear current
+        Realm.deleteRealm(realmConfig);
         Realm.setDefaultConfiguration(realmConfig);
 
         mRealm = Realm.getDefaultInstance();
@@ -231,11 +232,27 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
             }
         }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .timeout(10, TimeUnit.SECONDS)
+                //.timeout(10, TimeUnit.SECONDS) //TODO what does this do?
+                .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
+                    int MAX_RETRIES = 3;
+                    int retryCount = 0;
+
+                    @Override
+                    public Observable<?> call(Observable<? extends Throwable> observable) {
+                        return observable.flatMap(new Func1<Object, Observable<?>>() {
+                            @Override
+                            public Observable<?> call(Object o) {
+                                if (++retryCount < MAX_RETRIES) {
+                                    return Observable.timer(5, TimeUnit.SECONDS); //5 second delay
+                                }
+                                return Observable.error((Throwable) o);
+                            }
+                        });
+                    }
+                }) //TODO move to compose
                 .subscribe(new Subscriber<PokemonGo>() {
                     @Override
-                    public void onCompleted() {
-                    }
+                    public void onCompleted() { }
 
                     @Override
                     public void onError(Throwable e) {
@@ -245,7 +262,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                                 setupPokemon();
                             }
                         });
-                        Log.e("Pokenotify", "setup: " + e.getMessage());
                     }
 
                     @Override
@@ -291,14 +307,37 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
         }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 //.timeout(10, TimeUnit.SECONDS)
+//                .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
+//                    int MAX_RETRIES = 3;
+//                    int retryCount = 0;
+//
+//                    @Override
+//                    public Observable<?> call(Observable<? extends Throwable> observable) {
+//                        return observable.flatMap(new Func1<Object, Observable<?>>() {
+//                            @Override
+//                            public Observable<?> call(Object o) {
+//                                if (++retryCount < MAX_RETRIES) {
+//                                    return Observable.timer(5, TimeUnit.SECONDS); //5 second delay
+//                                }
+//                                return Observable.error((Throwable) o);
+//                            }
+//                        });
+//                    }
+//                }) //TODO move to compose
                 .subscribe(new Subscriber<CatchablePokemon>() {
                     @Override
                     public void onCompleted() {
                         showLoadingSpinner(false);
 
-                        if (!arePokemonNearby()) {
-                            Utils.showGenericDialog(getActivity(), "No Pokemon Nearby", "Maybe try looking somewhere else?");
-                        }
+                        Handler handler = new Handler();
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (!arePokemonNearby() && !isDialogShowing()) {
+                                    mLatestDialog = Utils.showGenericDialog(getActivity(), "No Pokemon Nearby", "Maybe try looking somewhere else?");
+                                }
+                            }
+                        }, 1000); //delay for map animation
                     }
 
                     @Override
@@ -310,10 +349,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                                 fetchNearbyPokemon(shouldShowNotification);
                             }
                         });
-
-                        if (e.getMessage() != null) {
-                            Log.e("PokeNotify", e.getMessage());
-                        }
                     }
 
                     @Override
@@ -328,7 +363,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                             mRealm.beginTransaction();
                             mRealm.copyToRealm(pokemon);
                             mRealm.commitTransaction();
-                            //TODO check if marker exists
                             mMarkers.put(pokemon.getEncounterId(), addMapMarker(pokemon));
                         }
                     }
@@ -343,8 +377,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                 if (mFindingGPSSignalSnackbar.isShown()) {
                     mFindingGPSSignalSnackbar.dismiss();
                     showLoadingSpinner(true);
-                    final LatLng currentLocation = new LatLng(34.008344620842834, -118.49789142608643); //TODO remove
-                    //final LatLng currentLocation = new LatLng(location.getLatitude(), location.getLongitude()); //Zoom to location for the first time
+                    //final LatLng currentLocation = new LatLng(34.008344620842834, -118.49789142608643); //TODO remove hardcode values
+                    final LatLng currentLocation = new LatLng(location.getLatitude(), location.getLongitude()); //Zoom to location for the first time
 
                     Observable.create(new Observable.OnSubscribe<Void>() {
                         @Override
@@ -368,9 +402,9 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                 }
 
                 if (mPokemonClient != null) {
-                    // TODO: remove hardcode values
-                    location.setLatitude(34.008344620842834);
-                    location.setLongitude(-118.49789142608643);
+//                    // TODO: remove hardcode values
+//                    location.setLatitude(34.008344620842834);
+//                    location.setLongitude(-118.49789142608643);
 
                     updateMapWithPokemon(location, true);
                 }
@@ -494,7 +528,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
         newCenterOfMap.setLatitude(mMap.getCameraPosition().target.latitude);
         newCenterOfMap.setLongitude(mMap.getCameraPosition().target.longitude);
 
-        if (mPreviousCenterOfMap.distanceTo(newCenterOfMap) > 150) { // 1km
+        if (mPreviousCenterOfMap.distanceTo(newCenterOfMap) > 100) { // 1km
             mRedoSearchButton.setVisibility(View.VISIBLE);
         }
     }
@@ -576,7 +610,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
             mLoadingSpinnerWidget.setVisibility(View.VISIBLE);
             mLoadingSpinner.startAnimation();
         } else {
-            //TODO wrap in RxCall?
             mLoadingSpinner.stopAnimation();
             mLoadingSpinnerWidget.setVisibility(View.GONE);
         }
