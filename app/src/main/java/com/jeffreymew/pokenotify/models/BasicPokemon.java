@@ -40,7 +40,7 @@ public class BasicPokemon extends RealmObject implements Serializable {
 
     public String getName() {
         if (mName.equals("Nidoran_male")) return "Nidoran(M)";
-        if (mName.equals("Nidoran_female")) return "Nidoran(F)";
+        else if (mName.equals("Nidoran_female")) return "Nidoran(F)";
         return mName;
     }
 

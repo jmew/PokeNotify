@@ -536,7 +536,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
         newCenterOfMap.setLatitude(mMap.getCameraPosition().target.latitude);
         newCenterOfMap.setLongitude(mMap.getCameraPosition().target.longitude);
 
-        if (mPreviousCenterOfMap.distanceTo(newCenterOfMap) > 100) { // 1km
+        if (mPreviousCenterOfMap.distanceTo(newCenterOfMap) > 75) { // 1km
             mRedoSearchButton.setVisibility(View.VISIBLE);
         }
     }
