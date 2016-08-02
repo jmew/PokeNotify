@@ -29,12 +29,15 @@ import butterknife.OnEditorAction;
 import okhttp3.OkHttpClient;
 import rx.Observable;
 import rx.Subscriber;
+import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func0;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 public class LoginActivity extends AppCompatActivity {
+
+    private Subscription mLoginSubscription;
 
     @BindView(R.id.username)
     EditText mUsername;
@@ -58,6 +61,12 @@ public class LoginActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
         checkIfCredentialsCached();
+    }
+
+    @Override
+    protected void onPause() {
+        mLoginSubscription.unsubscribe();
+        super.onPause();
     }
 
     @OnClick(R.id.sign_up_link)
@@ -108,7 +117,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void login(final String username, final String password) {
-        Observable.defer(new Func0<Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>>() {
+        mLoginSubscription = Observable.defer(new Func0<Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>>() {
             @Override
             public Observable<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo> call() {
                 OkHttpClient httpClient = new OkHttpClient();
