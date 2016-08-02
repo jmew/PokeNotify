@@ -267,6 +267,10 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                     @Override
                     public void onNext(PokemonGo pokemonGo) {
                         mPokemonClient = pokemonGo;
+
+                        if (mPreviousCenterOfMap != null) {
+                            updateMapWithPokemon(mPreviousCenterOfMap, false);
+                        }
                     }
                 });
     }
@@ -306,24 +310,24 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
             }
         }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                //.timeout(10, TimeUnit.SECONDS)
-//                .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
-//                    int MAX_RETRIES = 3;
-//                    int retryCount = 0;
-//
-//                    @Override
-//                    public Observable<?> call(Observable<? extends Throwable> observable) {
-//                        return observable.flatMap(new Func1<Object, Observable<?>>() {
-//                            @Override
-//                            public Observable<?> call(Object o) {
-//                                if (++retryCount < MAX_RETRIES) {
-//                                    return Observable.timer(5, TimeUnit.SECONDS); //5 second delay
-//                                }
-//                                return Observable.error((Throwable) o);
-//                            }
-//                        });
-//                    }
-//                }) //TODO move to compose
+                .timeout(3, TimeUnit.SECONDS)
+                .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
+                    int MAX_RETRIES = 3;
+                    int retryCount = 0;
+
+                    @Override
+                    public Observable<?> call(Observable<? extends Throwable> observable) {
+                        return observable.flatMap(new Func1<Object, Observable<?>>() {
+                            @Override
+                            public Observable<?> call(Object o) {
+                                if (++retryCount < MAX_RETRIES) {
+                                    return Observable.timer(1, TimeUnit.SECONDS); //1 second delay
+                                }
+                                return Observable.error((Throwable) o);
+                            }
+                        });
+                    }
+                }) //TODO move to compose
                 .subscribe(new Subscriber<CatchablePokemon>() {
                     @Override
                     public void onCompleted() {
