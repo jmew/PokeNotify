@@ -1,5 +1,5 @@
 # PokeNotify
 
-![Login Screen](http://i.imgur.com/a/YyIag)
-![Main Screen](http://i.imgur.com/a/AXGOL)
-![Notifications Screen](http://i.imgur.com/a/Ksr8W)
+![Login Screen](http://i.imgur.com/vb18GOd.png)
+![Main Screen](http://i.imgur.com/Qqomfgj.png)
+![Notifications Screen](http://i.imgur.com/tkSUAbJ.png)
