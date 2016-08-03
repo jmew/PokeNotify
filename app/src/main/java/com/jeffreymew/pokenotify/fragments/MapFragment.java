@@ -76,11 +76,9 @@ import okhttp3.OkHttpClient;
 import rx.Observable;
 import rx.Subscriber;
 import rx.Subscription;
-import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.functions.Func0;
 import rx.functions.Func1;
-import rx.schedulers.Schedulers;
 
 
 /**
@@ -145,7 +143,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     @Override
     public void onResume() {
         super.onResume();
-        mRealm = Realm.getDefaultInstance(); //TODO do i need?
+        mRealm = Realm.getDefaultInstance();
 
         Observable<BasicPokemon> subject = ((NotificationActivity) getActivity()).getNotificationObservable();
         mNotificationSubscriber = subject.subscribe(new Action1<BasicPokemon>() {
@@ -178,12 +176,14 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
     public void onMapReady(GoogleMap googleMap) {
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             showEnableLocationDialog();
+            //TODO permissions bug?
             return;
         }
 
         mMap = googleMap;
         mMap.setMyLocationEnabled(true);
-        //TODO remove buttons at bottom
+        mMap.getUiSettings().setMapToolbarEnabled(false);
+        mMap.getUiSettings().setIndoorLevelPickerEnabled(false);
 
         Criteria criteria = new Criteria();
         if (mLocationManager.getLastKnownLocation(mLocationManager.getBestProvider(criteria, false)) != null) {
@@ -233,8 +233,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                     return Observable.error(e);
                 }
             }
-        }).subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
+        }).compose(Utils.<PokemonGo>applySchedulers())
                 //.timeout(10, TimeUnit.SECONDS) //TODO what does this do?
                 .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
                     int MAX_RETRIES = 3;
@@ -252,10 +251,11 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                             }
                         });
                     }
-                }) //TODO move to compose
+                })
                 .subscribe(new Subscriber<PokemonGo>() {
                     @Override
-                    public void onCompleted() { }
+                    public void onCompleted() {
+                    }
 
                     @Override
                     public void onError(Throwable e) {
@@ -311,8 +311,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                     return Observable.error(e);
                 }
             }
-        }).subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
+        }).compose(Utils.<CatchablePokemon>applySchedulers())
                 .timeout(3, TimeUnit.SECONDS)
                 .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
                     int MAX_RETRIES = 3;
@@ -330,7 +329,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleA
                             }
                         });
                     }
-                }) //TODO move to compose
+                })
                 .subscribe(new Subscriber<CatchablePokemon>() {
                     @Override
                     public void onCompleted() {

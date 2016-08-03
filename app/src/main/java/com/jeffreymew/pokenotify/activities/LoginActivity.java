@@ -30,10 +30,8 @@ import okhttp3.OkHttpClient;
 import rx.Observable;
 import rx.Subscriber;
 import rx.Subscription;
-import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Func0;
 import rx.functions.Func1;
-import rx.schedulers.Schedulers;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -129,9 +127,8 @@ public class LoginActivity extends AppCompatActivity {
                     return Observable.error(e);
                 }
             }
-        }).subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .timeout(8, TimeUnit.SECONDS) //TODO do i need?
+        }).compose(Utils.<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>applySchedulers())
+//                .timeout(8, TimeUnit.SECONDS) //TODO do i need?
                 .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
                     int MAX_RETRIES = 2;
                     int retryCount = 0;
@@ -148,7 +145,7 @@ public class LoginActivity extends AppCompatActivity {
                             }
                         });
                     }
-                }) //TODO move to compose
+                })
                 .subscribe(new Subscriber<RequestEnvelopeOuterClass.RequestEnvelope.AuthInfo>() {
                     @Override
                     public void onCompleted() {

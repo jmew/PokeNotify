@@ -7,9 +7,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
@@ -20,8 +20,6 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.resource.bitmap.GlideBitmapDrawable;
-import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.jeffreymew.pokenotify.R;
@@ -31,7 +29,12 @@ import com.jeffreymew.pokenotify.models.BasicPokemon;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
+
+import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 /**
  * Created by mew on 2016-07-22.
@@ -46,12 +49,12 @@ public class Utils {
                 STATIC_MAP_HEIGHT + "&maptype=roadmap&markers=color:red%7C" + pokemon.getLatitude() + "," + pokemon.getLongitude() + "&key=" + context.getString(R.string.google_maps_key);
 
 
-        Glide.with(context.getApplicationContext()).load(STATIC_MAPS_URL).into(new SimpleTarget<GlideDrawable>() {
+        Glide.with(context.getApplicationContext()).load(STATIC_MAPS_URL).asBitmap().into(new SimpleTarget<Bitmap>() {
             @Override
-            public void onResourceReady(GlideDrawable resource, GlideAnimation<? super GlideDrawable> glideAnimation) {
-                createNotification(context, pokemon, currentLocation, resource.getCurrent());
+            public void onResourceReady(Bitmap bitmap, GlideAnimation<? super Bitmap> glideAnimation) {
+                createNotification(context, pokemon, currentLocation, bitmap);
             }
-        }); //TODO replace with .asBitmap()
+        });
     }
 
     public static Dialog showErrorDialog(final Context context, String title, String message, boolean shouldShowServerStatus, DialogInterface.OnClickListener retryListener) {
@@ -104,13 +107,23 @@ public class Utils {
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
-    private static void createNotification(final Context context, final BasicPokemon pokemon, final Location currentLocation, final Drawable map) {
+    public static <T> Observable.Transformer<T, T> applySchedulers() {
+        return new Observable.Transformer<T, T>() {
+            @Override
+            public Observable<T> call(Observable<T> observable) {
+                return observable.subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread());
+            }
+        };
+    }
+
+    private static void createNotification(final Context context, final BasicPokemon pokemon, final Location currentLocation, final Bitmap staticMap) {
         Location pokemonLocation = new Location(LocationManager.NETWORK_PROVIDER);
         pokemonLocation.setLatitude(pokemon.getLatitude());
         pokemonLocation.setLongitude(pokemon.getLongitude());
 
         Date date = new Date(pokemon.getExpirationTimestampMs());
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm:ss a");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm:ss a", Locale.getDefault());
         simpleDateFormat.setTimeZone(TimeZone.getDefault());
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
@@ -119,7 +132,7 @@ public class Utils {
                 .setTicker(pokemon.getName() + " Nearby!")
                 .setSmallIcon(pokemon.getPokemonImage())
                 .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), pokemon.getPokemonImage()))
-                .setStyle(new NotificationCompat.BigPictureStyle().bigPicture(((GlideBitmapDrawable) map).getBitmap()))
+                .setStyle(new NotificationCompat.BigPictureStyle().bigPicture(staticMap))
                 .setVibrate(new long[]{500, 500, 500})
                 .setLights(Color.CYAN, 2000, 2000)
                 .setOnlyAlertOnce(true)
